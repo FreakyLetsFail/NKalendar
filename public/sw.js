@@ -4,8 +4,8 @@ self.addEventListener('push', event => {
   const title = data.title || 'Erinnerung';
   const options = {
     body: data.body || 'Das Event findet bald statt!',
-    icon: '/icon.png',    // Stelle sicher, dass diese Datei im public-Verzeichnis liegt
-    badge: '/badge.png'   // Ebenso hier
+    icon: '/icon.png',
+    badge: '/badge.png'
   };
   console.log("Push event received:", event);
   event.waitUntil(self.registration.showNotification(title, options));

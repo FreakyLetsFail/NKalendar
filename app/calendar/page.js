@@ -84,7 +84,7 @@ export default function CalendarPage() {
     }
   }, []);
 
-  // Automatischer Prompt: Nur wenn kein Abonnement existiert und noch keine Zustimmung (via localStorage)
+  // Automatischer Prompt: Nur wenn kein Abo existiert und noch keine Zustimmung (via localStorage)
   useEffect(() => {
     const hasConsented = localStorage.getItem("pushConsent");
     if (!pushSubscription && "PushManager" in window && !hasConsented) {
@@ -108,7 +108,7 @@ export default function CalendarPage() {
         });
         setPushSubscription(sub);
         setPushStatus("Push-Abonnement erfolgreich.");
-        // Sende das Abonnement an die API zum Speichern
+        // Abonnement an die API zum Speichern senden
         await fetch("/api/save-subscription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
