@@ -5,8 +5,6 @@ import { sendNotification } from "@/lib/notifications";
 export async function GET(request) {
   const now = new Date().toISOString();
 
-  // Alle fälligen Notifications abrufen – die Fremdspalte aus "events" wird automatisch verknüpft,
-  // wenn du "events(title)" angibst.
   const { data: notifications, error } = await supabase
     .from("notifications")
     .select("id, event_id, notify_at, sent, events(title)")
@@ -22,7 +20,6 @@ export async function GET(request) {
     return new Response(JSON.stringify({ success: true, message: "Keine fälligen Notifications." }), { status: 200 });
   }
 
-  // Für jede Notification: Sende sie (hier via Browser Notification API) und markiere als gesendet
   for (const notification of notifications) {
     await sendNotification(`Erinnerung: ${notification.events.title}`, {
       body: "Das Event findet bald statt!"

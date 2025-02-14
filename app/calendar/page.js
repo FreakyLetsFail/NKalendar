@@ -4,16 +4,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
-  format,
   startOfMonth,
   startOfWeek,
   addDays,
   isSameMonth,
   isSameDay
 } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { sendNotification } from "@/lib/notifications";
+
+const timeZone = "Europe/Berlin";
 
 // Hilfsfunktion: Base64-VAPID-Schlüssel in Uint8Array umwandeln
 function urlBase64ToUint8Array(base64String) {
@@ -37,7 +38,12 @@ export default function CalendarPage() {
   useEffect(() => {
     const fetchEvents = async () => {
       let { data, error } = await supabase.from("events").select("*");
-      if (!error) setEvents(data);
+      if (!error) {
+        console.log("Geladene Events:", data);
+        setEvents(data);
+      } else {
+        console.error("Fehler beim Laden der Events:", error);
+      }
     };
 
     fetchEvents();
@@ -47,15 +53,12 @@ export default function CalendarPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, fetchEvents)
       .subscribe();
 
+    // Optionale Realtime-Subscription für Notifications (falls lokal benötigt)
     const notificationsSubscription = supabase
       .channel("realtime:notifications")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
-        // Optionale lokale Notification (zur UI-Aktualisierung)
-        sendNotification("Event Erinnerung!", {
-          body: `Bald startet: ${payload.new.title || "Event"}`
-        });
-        // Als gesendet markieren
-        supabase.from("notifications").update({ sent: true }).eq("id", payload.new.id);
+        console.log("Realtime Notification Payload:", payload);
+        // Hier kannst du lokale Notifications auslösen (optional)
       })
       .subscribe();
 
@@ -65,7 +68,7 @@ export default function CalendarPage() {
     };
   }, []);
 
-  // Service Worker registrieren und vorhandenes Push-Abonnement prüfen
+  // Service Worker registrieren und vorhandenes Push-Abo prüfen
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js")
@@ -108,7 +111,7 @@ export default function CalendarPage() {
         });
         setPushSubscription(sub);
         setPushStatus("Push-Abonnement erfolgreich.");
-        // Abonnement an die API zum Speichern senden
+        console.log("Push-Abo registriert:", sub);
         await fetch("/api/save-subscription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -139,7 +142,7 @@ export default function CalendarPage() {
         <ul className="mb-4">
           {upcomingEvents.map((event) => (
             <li key={event.id} className="p-2 border-b">
-              {format(new Date(event.start_time), "dd.MM.yyyy")} - {event.title}
+              {formatInTimeZone(new Date(event.start_time), timeZone, "dd.MM.yyyy HH:mm")} - {event.title}
             </li>
           ))}
         </ul>
@@ -164,7 +167,7 @@ function Calendar({ currentDate, events, onMonthChange }) {
         <Button variant="outline" onClick={() => onMonthChange(addDays(currentDate, -30))}>
           ←
         </Button>
-        <h3 className="text-lg font-bold">{format(currentDate, "MMMM yyyy")}</h3>
+        <h3 className="text-lg font-bold">{formatInTimeZone(currentDate, timeZone, "MMMM yyyy")}</h3>
         <Button variant="outline" onClick={() => onMonthChange(addDays(currentDate, 30))}>
           →
         </Button>
@@ -180,9 +183,11 @@ function Calendar({ currentDate, events, onMonthChange }) {
               key={day.toString()}
               className={`p-2 rounded text-center border ${isSameMonth(day, currentDate) ? "bg-gray-100" : "bg-gray-200"}`}
             >
-              {format(day, "d")}
+              {formatInTimeZone(day, timeZone, "d")}
               {eventForDay && (
-                <div className="text-red-500 text-xs mt-1">{eventForDay.title}</div>
+                <div className="text-red-500 text-xs mt-1">
+                  {eventForDay.title} - {formatInTimeZone(new Date(eventForDay.start_time), timeZone, "HH:mm")}
+                </div>
               )}
             </div>
           );
