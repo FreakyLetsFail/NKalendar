@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // VAPID-Schlüssel setzen:
@@ -18,15 +18,15 @@ webpush.setVapidDetails(
 async function sendDueNotifications() {
   console.log("sendDueNotifications wurde aufgerufen.");
   
-  // Fällige Notifications abrufen:
-  const { data: notifications, error: notifError } = await supabase
+  // Alle noch nicht gesendeten Notifications abrufen, die fällig sind
+  const { data: notifications, error } = await supabase
     .from('notifications')
     .select('id, event_id, notify_at, sent, events(id, title, start_time)')
     .eq('sent', false)
     .lte('notify_at', new Date().toISOString());
     
-  if (notifError) {
-    console.error("Fehler beim Abrufen der Notifications:", notifError);
+  if (error) {
+    console.error("Fehler beim Abrufen der Notifications:", error);
     return;
   }
   
@@ -48,7 +48,7 @@ async function sendDueNotifications() {
     return;
   }
   
-  // Für jede Notification: Sende an alle Abonnements
+  // Für jede fällige Notification: Sende an alle Abonnements
   for (const notification of notifications) {
     const notifyTime = new Date(notification.notify_at);
     console.log(`Notification ${notification.id} - notify_at: ${notifyTime.toISOString()}`);
@@ -56,7 +56,7 @@ async function sendDueNotifications() {
     if (!notification.sent && notifyTime <= now) {
       const payload = {
         title: notification.events.title,
-        body: `Event startet um ${new Date(notification.events.start_time).toLocaleTimeString()}`
+        body: `Event startet um ${new Date(notification.events.start_time).toLocaleTimeString("de-DE")}`
       };
       for (const subRecord of subscriptions) {
         const subscription = subRecord.subscription;

@@ -53,12 +53,12 @@ export default function CalendarPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "events" }, fetchEvents)
       .subscribe();
 
-    // Optionale Realtime-Subscription für Notifications (falls lokal benötigt)
     const notificationsSubscription = supabase
       .channel("realtime:notifications")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
         console.log("Realtime Notification Payload:", payload);
-        // Hier kannst du lokale Notifications auslösen (optional)
+        // Optionale lokale Notification (zur UI-Aktualisierung)
+        // (Hinweis: Produktiv sollten Push-Nachrichten via Web-Push gesendet werden.)
       })
       .subscribe();
 
@@ -68,7 +68,7 @@ export default function CalendarPage() {
     };
   }, []);
 
-  // Service Worker registrieren und vorhandenes Push-Abo prüfen
+  // Service Worker registrieren und vorhandenes Push-Abonnement prüfen
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js")

@@ -4,13 +4,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function POST(request) {
   try {
     const subscription = await request.json();
-    // Speichere das Abonnement in der Datenbank
+    // Speichere das Abonnement in der Tabelle push_subscriptions
     const { data, error } = await supabase
       .from("push_subscriptions")
       .insert([{ subscription }]);

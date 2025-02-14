@@ -1,10 +1,10 @@
-// app/uploads/page.js
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DateTime } from "luxon";
 
 const timeZone = "Europe/Berlin";
 
@@ -12,7 +12,18 @@ export default function UploadPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startTime, setStartTime] = useState(""); // erwartet z. B. "2025-02-14T20:11"
+  const [formattedTime, setFormattedTime] = useState("");
   const [message, setMessage] = useState("");
+
+  // Sobald sich startTime ändert, formatiere die Zeit in der Zeitzone Europe/Berlin
+  useEffect(() => {
+    if (startTime) {
+      const localDate = DateTime.fromISO(startTime, { zone: timeZone });
+      setFormattedTime(localDate.toFormat("dd.MM.yyyy HH:mm"));
+    } else {
+      setFormattedTime("");
+    }
+  }, [startTime]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,18 +33,16 @@ export default function UploadPage() {
       return;
     }
 
-    // Dynamischer Import von date-fns-tz
-    const { zonedTimeToUtc, formatInTimeZone } = await import("date-fns-tz");
-    
-    // Konvertiere den vom Nutzer eingegebenen lokalen Zeitpunkt in UTC, basierend auf Europe/Berlin.
-    const utcDate = zonedTimeToUtc(startTime, timeZone);
-    console.log("Konvertierter UTC-Timestamp:", utcDate.toISOString());
-
     try {
-      // Event in die DB einfügen (start_time wird als vollständiger ISO-String gespeichert)
+      // Konvertiere den vom Nutzer eingegebenen lokalen Zeitpunkt in UTC
+      const localDate = DateTime.fromISO(startTime, { zone: timeZone });
+      const utcDate = localDate.toUTC();
+      console.log("Konvertierter UTC-Timestamp:", utcDate.toISO());
+
+      // Event in die DB einfügen (start_time als vollständiger ISO-String)
       const { data, error } = await supabase
         .from("events")
-        .insert([{ title, description, start_time: utcDate.toISOString() }]);
+        .insert([{ title, description, start_time: utcDate.toISO() }]);
       if (error) {
         console.error("Fehler beim Erstellen des Events:", error);
         setMessage("Fehler beim Erstellen des Events.");
@@ -83,10 +92,7 @@ export default function UploadPage() {
             />
             {startTime && (
               <p className="text-sm text-gray-500 mt-1">
-                Angezeigte Zeit (Europe/Berlin):{" "}
-                {(
-                  await import("date-fns-tz")
-                ).formatInTimeZone(new Date(startTime), timeZone, "dd.MM.yyyy HH:mm")}
+                Angezeigte Zeit (Europe/Berlin): {formattedTime}
               </p>
             )}
           </div>
