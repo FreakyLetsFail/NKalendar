@@ -1,22 +1,14 @@
-// app/calendar/page.js
 "use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import {
-  startOfMonth,
-  startOfWeek,
-  addDays,
-  isSameMonth,
-  isSameDay
-} from "date-fns";
+import { startOfMonth, startOfWeek, addDays, isSameMonth, isSameDay } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 const timeZone = "Europe/Berlin";
 
-// Hilfsfunktion: Base64-VAPID-Schlüssel in Uint8Array umwandeln
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -34,7 +26,7 @@ export default function CalendarPage() {
   const [pushStatus, setPushStatus] = useState("Push-Registrierung nicht initiiert");
   const [pushSubscription, setPushSubscription] = useState(null);
 
-  // Kalender-Events laden und Realtime-Subscriptions einrichten
+  // Events laden
   useEffect(() => {
     const fetchEvents = async () => {
       let { data, error } = await supabase.from("events").select("*");
@@ -45,30 +37,10 @@ export default function CalendarPage() {
         console.error("Fehler beim Laden der Events:", error);
       }
     };
-
     fetchEvents();
-
-    const eventsSubscription = supabase
-      .channel("realtime:events")
-      .on("postgres_changes", { event: "*", schema: "public", table: "events" }, fetchEvents)
-      .subscribe();
-
-    const notificationsSubscription = supabase
-      .channel("realtime:notifications")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, (payload) => {
-        console.log("Realtime Notification Payload:", payload);
-        // Optionale lokale Notification (zur UI-Aktualisierung)
-        // (Hinweis: Produktiv sollten Push-Nachrichten via Web-Push gesendet werden.)
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(eventsSubscription);
-      supabase.removeChannel(notificationsSubscription);
-    };
   }, []);
 
-  // Service Worker registrieren und vorhandenes Push-Abonnement prüfen
+  // Service Worker registrieren und bestehendes Abo prüfen
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js")
@@ -87,20 +59,7 @@ export default function CalendarPage() {
     }
   }, []);
 
-  // Automatischer Prompt: Nur wenn kein Abo existiert und noch keine Zustimmung (via localStorage)
-  useEffect(() => {
-    const hasConsented = localStorage.getItem("pushConsent");
-    if (!pushSubscription && "PushManager" in window && !hasConsented) {
-      if (window.confirm("Möchtest du Push-Benachrichtigungen erhalten?")) {
-        localStorage.setItem("pushConsent", "true");
-        subscribeToPush();
-      } else {
-        localStorage.setItem("pushConsent", "false");
-      }
-    }
-  }, [pushSubscription]);
-
-  // Funktion zur Registrierung des Push-Abonnements
+  // Button wird angezeigt, wenn noch kein Abo existiert
   const subscribeToPush = async () => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       try {
@@ -126,21 +85,17 @@ export default function CalendarPage() {
     }
   };
 
-  // Filter: Events in den nächsten 7 Tagen
-  const upcomingEvents = events.filter(event => {
-    const eventDate = new Date(event.start_time);
-    return eventDate >= new Date() &&
-           eventDate <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  });
-
   return (
     <div className="container mx-auto p-4 max-w-lg">
-      <h1 className="text-2xl font-bold mb-4">Calendar &amp; Push Notifications</h1>
+      <h1 className="text-2xl font-bold mb-4">Calendar & Push Notifications</h1>
       <p>Status Push: {pushStatus}</p>
+      {!pushSubscription && (
+        <Button onClick={subscribeToPush}>Push-Benachrichtigungen aktivieren</Button>
+      )}
       <h2 className="text-lg font-bold mb-2">Upcoming Events:</h2>
-      {upcomingEvents.length > 0 ? (
+      {events.length > 0 ? (
         <ul className="mb-4">
-          {upcomingEvents.map((event) => (
+          {events.map((event) => (
             <li key={event.id} className="p-2 border-b">
               {formatInTimeZone(new Date(event.start_time), timeZone, "dd.MM.yyyy HH:mm")} - {event.title}
             </li>
