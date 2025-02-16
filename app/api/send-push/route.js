@@ -102,7 +102,7 @@ async function sendDueNotifications() {
         } else {
           console.log("Keine Push-Abonnements gefunden.");
         }
-      } else if (Math.abs(diffDays - 0) < 0.1) {
+      } else if (Math.abs(diffDays - 1) < 0.1) {
         // 1 Tag vorher: Nur an registrierte Nutzer (mit push subscription) senden
         console.log("Zweig: 1 Tag vorher (nur registrierte Nutzer)");
         const { data: registrations, error: regError } = await supabase

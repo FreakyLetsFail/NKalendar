@@ -22,8 +22,10 @@ export default function CalendarPage() {
   // (Optional) Authentifizierung
   const [session, setSession] = useState(null);
 
-  // Alle zukünftigen Events
+  // Alle Events (wir filtern später die künftigen und 14-Tage-Events)
   const [events, setEvents] = useState([]);
+
+  // Datum für den Kalender
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // Push-Benachrichtigung
@@ -34,22 +36,25 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [registrationName, setRegistrationName] = useState("");
 
-  // Für Event Upload (optional)
+  // Event-Upload (optional)
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startTime, setStartTime] = useState("");
   const [formattedTime, setFormattedTime] = useState("");
   const [uploadMessage, setUploadMessage] = useState("");
 
-  // Custom Push-Nachrichten (manuell)
+  // Custom Push-Nachrichten
   const [pushTitle, setPushTitle] = useState("");
   const [pushMessage, setPushMessage] = useState("");
   const [pushInfo, setPushInfo] = useState("");
 
+  // Info-Box (statt alert)
+  const [infoMessage, setInfoMessage] = useState("");
+
   // Header-Text
   const headerTitle = "Semesterprogramm der B! Norddeutsche und Niedersachsen";
 
-  // Formatierung der Startzeit für den Upload
+  // Formatierung der Startzeit (Event-Upload)
   useEffect(() => {
     if (startTime) {
       const localDate = DateTime.fromISO(startTime, { zone: timeZone });
@@ -72,27 +77,59 @@ export default function CalendarPage() {
     return () => listener?.subscription.unsubscribe();
   }, []);
 
-  // Alle zukünftigen Events laden
+  // Events laden (nur einmal initial), spätere Updates kommen über Realtime
+  const fetchEvents = async () => {
+    const { data, error } = await supabase.from("events").select("*");
+    if (!error && data) {
+      setEvents(data);
+    } else if (error) {
+      console.error("Fehler beim Laden der Events:", error);
+    }
+  };
+
   useEffect(() => {
-    const fetchEvents = async () => {
-      let { data, error } = await supabase.from("events").select("*");
-      if (!error) {
-        const now = new Date();
-        const upcoming = data.filter((event) => new Date(event.start_time) >= now);
-        setEvents(upcoming);
-      } else {
-        console.error("Fehler beim Laden der Events:", error);
-      }
-    };
     fetchEvents();
   }, []);
 
+  // Realtime: Auf Änderungen in der Tabelle "events" reagieren
+  useEffect(() => {
+    const channel = supabase
+      .channel("realtime-events")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "events" },
+        (payload) => {
+          console.log("Realtime-Änderung in events:", payload);
+          // Nach jeder Änderung neu laden
+          fetchEvents();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Automatisches Ausblenden der Info-Box nach 3 Sekunden
+  useEffect(() => {
+    if (infoMessage) {
+      const timer = setTimeout(() => {
+        setInfoMessage("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [infoMessage]);
+
+  // Filter: nur künftige Events
+  const now = new Date();
+  const upcomingEvents = events.filter((event) => new Date(event.start_time) >= now);
+
   // Filter: Events der nächsten 14 Tage
-  const eventsNext14 = events.filter((event) => {
+  const eventsNext14 = upcomingEvents.filter((event) => {
     const eventTime = new Date(event.start_time);
-    const now = new Date();
     const fourteenDaysLater = addDaysFn(now, 14);
-    return eventTime >= now && eventTime <= fourteenDaysLater;
+    return eventTime <= fourteenDaysLater;
   });
 
   // Push-Benachrichtigung initialisieren
@@ -114,17 +151,21 @@ export default function CalendarPage() {
     }
   }, []);
 
+  // Push-Abo anlegen
   const subscribeToPush = async () => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       try {
         const registration = await navigator.serviceWorker.ready;
         const sub = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
+          applicationServerKey: urlBase64ToUint8Array(
+            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+          )
         });
         setPushSubscription(sub);
         setPushStatus("");
-        await fetch("/api/save-subscription", {
+        // Abo auf dem Server speichern
+        await fetch("https://192.168.178.66:3000/api/save-subscription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(sub)
@@ -159,32 +200,24 @@ export default function CalendarPage() {
     setSelectedEvent(event);
   };
 
-  // Speichert die Anmeldung in der Datenbank – hier wird auch pushSubscription übernommen,
-  // damit spätere 1-Tag-vorher-Benachrichtigungen nur an registrierte Nutzer gesendet werden.
+  // Speichert die Anmeldung in "event_registrations" + subscription
   const handleRegistration = async () => {
     if (!selectedEvent) return;
     const { error } = await supabase.from("event_registrations").insert([
-      { event_id: selectedEvent.id, name: registrationName, subscription: pushSubscription }
+      {
+        event_id: selectedEvent.id,
+        name: registrationName,
+        subscription: pushSubscription
+      }
     ]);
     if (!error) {
-      if (pushSubscription) {
-        await fetch("https://192.168.178.66:3000/api/send-notification", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            subscription: pushSubscription,
-            title: "Anmeldung erfolgreich",
-            message: `Erinnerung: In 14 Tagen ist ${selectedEvent.title}!`
-          }),
-        });
-      } else {
-        alert(`Du hast dich für ${selectedEvent.title} angemeldet!`);
-      }
+      // Anstelle von alert → kurze Info-Box
+      setInfoMessage(`Anmeldung für "${selectedEvent.title}" gespeichert!`);
       setRegistrationName("");
       setSelectedEvent(null);
     } else {
       console.error("Registrierung fehlgeschlagen:", error);
-      alert("Registrierung fehlgeschlagen, bitte versuche es erneut.");
+      setInfoMessage("Registrierung fehlgeschlagen – bitte erneut versuchen.");
     }
   };
 
@@ -205,7 +238,14 @@ export default function CalendarPage() {
       {/* Header */}
       <h1 className="text-3xl font-extrabold text-center">{headerTitle}</h1>
 
-      {/* Push-Benachrichtigung (Subscribe oben) */}
+      {/* Info-Box, wenn infoMessage gesetzt ist */}
+      {infoMessage && (
+        <div className="p-3 bg-green-100 border border-green-400 text-green-800 rounded mb-4 text-center">
+          {infoMessage}
+        </div>
+      )}
+
+      {/* Push-Benachrichtigung (Subscribe) */}
       <div className="flex justify-center">
         {!pushSubscription && (
           <Button onClick={handleSubscribe}>Push-Benachrichtigung aktivieren</Button>
@@ -233,7 +273,6 @@ export default function CalendarPage() {
                     <div className="font-bold">{event.title}</div>
                   </div>
                 </div>
-                {/* Button in derselben Zeile wie Datum/Titel */}
                 <Button onClick={() => handleEventClick(event)} size="sm">
                   Anmelden
                 </Button>
@@ -255,9 +294,9 @@ export default function CalendarPage() {
 
       {/* Abschnitt: Alle bevorstehenden Veranstaltungen */}
       <h2 className="text-xl font-bold">Alle Bevorstehenden Veranstaltungen</h2>
-      {events.length > 0 ? (
+      {upcomingEvents.length > 0 ? (
         <ul className="space-y-4">
-          {events.map((event) => (
+          {upcomingEvents.map((event) => (
             <li
               key={event.id}
               className="p-4 border border-black rounded hover:bg-gray-100 transition"
@@ -374,7 +413,9 @@ function Calendar({ currentDate, events, onMonthChange, onEventClick }) {
           return (
             <div
               key={day.toString()}
-              className={`p-3 rounded border border-black cursor-pointer flex items-center justify-center`}
+              className={`p-3 rounded border border-black cursor-pointer flex items-center justify-center ${
+                isSameMonth(day, currentDate) ? "bg-white" : "bg-gray-100"
+              }`}
               onClick={() => {
                 const eventForDay = events.find((event) =>
                   isSameDay(new Date(event.start_time), day)
@@ -385,7 +426,9 @@ function Calendar({ currentDate, events, onMonthChange, onEventClick }) {
               {hasEvent ? (
                 <img src="/Flag_Icon.png" alt="Flagge" className="h-5 w-5" />
               ) : (
-                <span className="text-sm font-medium">{formatInTimeZone(day, timeZone, "d")}</span>
+                <span className="text-sm font-medium">
+                  {formatInTimeZone(day, timeZone, "d")}
+                </span>
               )}
             </div>
           );
