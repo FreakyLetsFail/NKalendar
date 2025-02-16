@@ -1,36 +1,105 @@
 "use client";
 
-import { useEffect } from "react";
-// Beispiel-Icon, falls gewünscht:
+import { useState, useEffect } from "react";
 import { AiOutlineHome } from "react-icons/ai";
+import { Button } from "@/components/ui/button";
 
 export default function HomePage() {
+  const [deviceType, setDeviceType] = useState(null);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
+
+  // Gerätetyp ermitteln
   useEffect(() => {
-    // Hier könntest du weitere Logik einbauen, z.B. das Erkennen,
-    // ob die App bereits installiert ist, und dann den Installationsprompt ausblenden.
+    const ua = window.navigator.userAgent || window.navigator.vendor || window.opera;
+    if (/android/i.test(ua)) {
+      setDeviceType("android");
+    } else if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
+      setDeviceType("ios");
+    } else {
+      setDeviceType("desktop");
+      window.location.href = "/calendar"; // Desktop: Weiterleitung
+    }
   }, []);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-      <div className="max-w-xl w-full bg-white rounded-lg shadow-lg p-6">
-        <h1 className="text-3xl md:text-4xl font-bold mb-6 text-center text-blue-700 flex items-center justify-center gap-2">
-          Norddeutsche und Niedersachsen Kalendar
-        </h1>
-        <p className="mb-6 text-gray-700 text-center">
-          Diese App ist als Progressive Web App (PWA) konzipiert. Damit du alle Vorteile nutzen kannst, füge sie bitte zu deinem Home‑Bildschirm hinzu.
-        </p>
-        <div className="p-4 border-l-4 border-blue-300 bg-blue-50 rounded-md mb-6">
-          <h2 className="text-xl font-semibold mb-2 text-blue-800">
-            Zum Home‑Bildschirm hinzufügen
+  // Android: beforeinstallprompt abfangen
+  useEffect(() => {
+    if (deviceType === "android") {
+      const handler = (e) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+        setShowInstallButton(true);
+      };
+      window.addEventListener("beforeinstallprompt", handler);
+      return () => window.removeEventListener("beforeinstallprompt", handler);
+    }
+  }, [deviceType]);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(outcome === "accepted" ? "User accepted the install prompt" : "User dismissed the install prompt");
+      setDeferredPrompt(null);
+      setShowInstallButton(false);
+    }
+  };
+
+  // Render-Funktion für Anleitungen, je nach Gerätetyp
+  const renderInstructions = () => {
+    if (deviceType === "android") {
+      return (
+        <>
+          <div className="p-4 border-l-4 border-black bg-white rounded-md mb-6">
+            <h2 className="text-xl font-semibold mb-2 text-black">
+              Anleitung zum Hinzufügen (Android)
+            </h2>
+            <ul className="list-disc list-inside text-black space-y-1">
+              <li>Öffne diese Seite in Chrome auf deinem Android-Gerät.</li>
+              <li>Tippe auf das Menü- oder Teilen-Symbol.</li>
+              <li>Wähle „Zum Startbildschirm hinzufügen“ aus.</li>
+              <li>Bestätige die Installation.</li>
+            </ul>
+          </div>
+          {showInstallButton && (
+            <div className="mb-6 text-center">
+              <Button onClick={handleInstallClick}>
+                Zum Home‑Bildschirm hinzufügen
+              </Button>
+            </div>
+          )}
+        </>
+      );
+    } else if (deviceType === "ios") {
+      return (
+        <div className="p-4 border-l-4 border-black bg-white rounded-md mb-6">
+          <h2 className="text-xl font-semibold mb-2 text-black">
+            Anleitung zum Hinzufügen (iOS)
           </h2>
-          <ul className="list-disc list-inside text-gray-700 space-y-1">
-            <li>Öffne diese Seite in Safari oder Chrome auf deinem Gerät.</li>
-            <li>Tippe auf das Teilen‑Symbol (das Quadrat mit dem Pfeil nach oben).</li>
-            <li>Wähle „Zum Home‑Bildschirm“ aus.</li>
+          <ul className="list-disc list-inside text-black space-y-1">
+            <li>Öffne diese Seite in Safari auf deinem iPhone oder iPad.</li>
+            <li>Tippe auf das Teilen-Symbol.</li>
+            <li>Wähle „Zum Home‑Bildschirm hinzufügen“ aus.</li>
             <li>Bestätige die Installation.</li>
           </ul>
         </div>
-        <p className="text-gray-700 text-center">
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="max-w-xl w-full bg-white rounded-lg shadow-lg p-6 space-y-6 border border-black">
+        <h1 className="text-3xl md:text-4xl font-bold text-center text-black flex items-center justify-center gap-2">
+          <AiOutlineHome className="text-black" />
+          Semesterprogramm der B! Norddeutsche und Niedersachsen
+        </h1>
+        <p className="mb-4 text-black text-center">
+          Diese App ist als Progressive Web App (PWA) konzipiert. Füge sie bitte zu deinem Home‑Bildschirm hinzu, um alle Vorteile zu nutzen.
+        </p>
+        {renderInstructions()}
+        <p className="text-black text-center">
           Sobald die App installiert ist, erhältst du automatisch Push‑Benachrichtigungen für anstehende Events.
         </p>
       </div>
