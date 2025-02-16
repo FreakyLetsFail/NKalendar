@@ -39,7 +39,11 @@ export default function HomePage() {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      console.log(outcome === "accepted" ? "User accepted the install prompt" : "User dismissed the install prompt");
+      console.log(
+        outcome === "accepted"
+          ? "User accepted the install prompt"
+          : "User dismissed the install prompt"
+      );
       setDeferredPrompt(null);
       setShowInstallButton(false);
     }
@@ -50,11 +54,11 @@ export default function HomePage() {
     if (deviceType === "android") {
       return (
         <>
-          <div className="p-4 border-l-4 border-black bg-white rounded-md mb-6">
-            <h2 className="text-xl font-semibold mb-2 text-black">
+          <div className="p-4 border-l-4 border-indigo-500 bg-indigo-50 rounded-md mb-6">
+            <h2 className="text-xl font-semibold mb-2 text-gray-800">
               Anleitung zum Hinzufügen (Android)
             </h2>
-            <ul className="list-disc list-inside text-black space-y-1">
+            <ul className="list-disc list-inside space-y-1 text-gray-700">
               <li>Öffne diese Seite in Chrome auf deinem Android-Gerät.</li>
               <li>Tippe auf das Menü- oder Teilen-Symbol.</li>
               <li>Wähle „Zum Startbildschirm hinzufügen“ aus.</li>
@@ -72,11 +76,11 @@ export default function HomePage() {
       );
     } else if (deviceType === "ios") {
       return (
-        <div className="p-4 border-l-4 border-black bg-white rounded-md mb-6">
-          <h2 className="text-xl font-semibold mb-2 text-black">
+        <div className="p-4 border-l-4 border-pink-500 bg-pink-50 rounded-md mb-6">
+          <h2 className="text-xl font-semibold mb-2 text-gray-800">
             Anleitung zum Hinzufügen (iOS)
           </h2>
-          <ul className="list-disc list-inside text-black space-y-1">
+          <ul className="list-disc list-inside space-y-1 text-gray-700">
             <li>Öffne diese Seite in Safari auf deinem iPhone oder iPad.</li>
             <li>Tippe auf das Teilen-Symbol.</li>
             <li>Wähle „Zum Home‑Bildschirm hinzufügen“ aus.</li>
@@ -89,18 +93,24 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
-      <div className="max-w-xl w-full bg-white rounded-lg shadow-lg p-6 space-y-6 border border-black">
-        <h1 className="text-3xl md:text-4xl font-bold text-center text-black flex items-center justify-center gap-2">
-          <AiOutlineHome className="text-black" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-100 via-white to-pink-100 px-4">
+      <div className="max-w-xl w-full bg-white rounded-lg shadow-xl p-6 space-y-6 border border-gray-200">
+        <h1 className="text-3xl md:text-4xl font-bold text-center text-gray-800 flex items-center justify-center gap-2">
+          <AiOutlineHome className="text-indigo-600 text-4xl" />
           Semesterprogramm der B! Norddeutsche und Niedersachsen
         </h1>
-        <p className="mb-4 text-black text-center">
-          Diese App ist als Progressive Web App (PWA) konzipiert. Füge sie bitte zu deinem Home‑Bildschirm hinzu, um alle Vorteile zu nutzen.
+
+        <p className="text-gray-700 text-center leading-relaxed">
+          Diese App ist als Progressive Web App (PWA) konzipiert. Füge sie bitte
+          zu deinem Home‑Bildschirm hinzu, um alle Vorteile zu nutzen.
         </p>
+
+        {/* Anleitungen (Android/iOS) */}
         {renderInstructions()}
-        <p className="text-black text-center">
-          Sobald die App installiert ist, erhältst du automatisch Push‑Benachrichtigungen für anstehende Events.
+
+        <p className="text-gray-700 text-center leading-relaxed">
+          Sobald die App installiert ist, erhältst du automatisch Push‑Benachrichtigungen 
+          für anstehende Events.
         </p>
       </div>
     </div>

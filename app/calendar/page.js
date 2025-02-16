@@ -258,7 +258,7 @@ export default function CalendarPage() {
       <Separator className="my-6 border-black" />
 
       {/* Abschnitt: Events der nächsten 14 Tage */}
-      <h2 className="text-xl font-bold">Events der nächsten 14 Tage</h2>
+      <h2 className="text-xl font-bold">Veranstaltungen der nächsten 14 Tage</h2>
       {eventsNext14.length > 0 ? (
         <ul className="space-y-4">
           {eventsNext14.map((event) => (
@@ -287,7 +287,7 @@ export default function CalendarPage() {
           ))}
         </ul>
       ) : (
-        <p className="text-gray-500 text-center">Keine Events in den nächsten 14 Tagen.</p>
+        <p className="text-gray-500 text-center">Keine Veranstaltungen in den nächsten 14 Tagen.</p>
       )}
 
       <Separator className="my-6 border-black" />

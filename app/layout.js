@@ -17,21 +17,32 @@ export const metadata = {
   description: "Ein Echtzeit-Kalender mit PWA-Benachrichtigungen",
   manifest: "/manifest.json",
   icons: {
-    icon: '/icon512_rounded.png',
-    apple: '/icon512_maskable.png', // Hier wird das Apple Touch Icon gesetzt
-  },
+    icon: '/icon-512x512.png',
+    apple: '/apple-touch-icon.png'
+  }
+};
+
+export const viewport = {
+  minimumScale: 1,
+  initialScale: 1,
+  width: "device-width",
+  shrinkToFit: "no",
+  viewportFit: "cover"
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="de">
-      <head>
-        <link rel="apple-touch-icon" sizes="512x512" href="/icon512_maskable.png" />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-      <NotificationPermission />
+<html lang="de">
+  <head>
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  </head>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <NotificationPermission />
         {children}
       </body>
     </html>
