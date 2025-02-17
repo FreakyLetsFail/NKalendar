@@ -17,8 +17,8 @@ export const metadata = {
   description: "Ein Echtzeit-Kalender mit PWA-Benachrichtigungen",
   manifest: "/manifest.json",
   icons: {
-    icon: '/icon-512x512.png',
-    apple: '/apple-touch-icon.png'
+    icon: "/icons/512.png",
+    apple: "/icons/apple-touch-icon.png"
   }
 };
 
@@ -32,15 +32,17 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-<html lang="de">
-  <head>
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-icon.png" />
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  </head>
+    <html lang="de">
+      <head>
+        {/* Absolute Pfade sicherstellen */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+        <link rel="apple-touch-icon-precomposed" href="/icons/180.png" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <NotificationPermission />
         {children}
