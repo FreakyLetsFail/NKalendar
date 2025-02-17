@@ -165,7 +165,7 @@ export default function CalendarPage() {
         setPushSubscription(sub);
         setPushStatus("");
         // Abo auf dem Server speichern
-        await fetch("https://192.168.178.66:3000/api/save-subscription", {
+        await fetch("https://kalender-norddeutsche-niedersachsen.de/api/save-subscription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(sub)

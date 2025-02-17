@@ -1,3 +1,4 @@
+//api/send-push
 import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
 import dotenv from 'dotenv';
