@@ -32,6 +32,9 @@ export default function CalendarPage() {
   const [pushSubscription, setPushSubscription] = useState(null);
   const [pushStatus, setPushStatus] = useState("Push-Registrierung nicht initiiert");
 
+  // Registrierungen des Nutzers (als Set mit event_id)
+  const [registeredEvents, setRegisteredEvents] = useState(new Set());
+
   // Modal für Event-Anmeldung
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [registrationName, setRegistrationName] = useState("");
@@ -100,7 +103,6 @@ export default function CalendarPage() {
         { event: "*", schema: "public", table: "events" },
         (payload) => {
           console.log("Realtime-Änderung in events:", payload);
-          // Nach jeder Änderung neu laden
           fetchEvents();
         }
       )
@@ -110,6 +112,26 @@ export default function CalendarPage() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Registrierungen laden: Sobald pushSubscription vorhanden ist, abfragen, für welche Events sich der Nutzer registriert hat
+  useEffect(() => {
+    async function fetchRegistrations() {
+      if (pushSubscription) {
+        const { data, error } = await supabase
+          .from("event_registrations")
+          .select("event_id")
+          .eq("subscription->>endpoint", pushSubscription.endpoint);
+        if (error) {
+          console.error("Fehler beim Laden der Registrierungen:", error);
+        }
+        if (data) {
+          const registeredSet = new Set(data.map(reg => reg.event_id));
+          setRegisteredEvents(registeredSet);
+        }
+      }
+    }
+    fetchRegistrations();
+  }, [pushSubscription]);
 
   // Automatisches Ausblenden der Info-Box nach 3 Sekunden
   useEffect(() => {
@@ -123,10 +145,10 @@ export default function CalendarPage() {
 
   // Filter: nur künftige Events
   const now = new Date();
-  const upcomingEvents = events.filter((event) => new Date(event.start_time) >= now);
+  const upcomingEvents = events.filter(event => new Date(event.start_time) >= now);
 
   // Filter: Events der nächsten 14 Tage
-  const eventsNext14 = upcomingEvents.filter((event) => {
+  const eventsNext14 = upcomingEvents.filter(event => {
     const eventTime = new Date(event.start_time);
     const fourteenDaysLater = addDaysFn(now, 14);
     return eventTime <= fourteenDaysLater;
@@ -211,7 +233,8 @@ export default function CalendarPage() {
       }
     ]);
     if (!error) {
-      // Anstelle von alert → kurze Info-Box
+      // Registrierung erfolgreich – State updaten, sodass der Button nicht mehr angezeigt wird
+      setRegisteredEvents(prev => new Set(prev).add(selectedEvent.id));
       setInfoMessage(`Anmeldung für "${selectedEvent.title}" gespeichert!`);
       setRegistrationName("");
       setSelectedEvent(null);
@@ -238,7 +261,7 @@ export default function CalendarPage() {
       {/* Header */}
       <h1 className="text-3xl font-extrabold text-center">{headerTitle}</h1>
 
-      {/* Info-Box, wenn infoMessage gesetzt ist */}
+      {/* Info-Box */}
       {infoMessage && (
         <div className="p-3 bg-green-100 border border-green-400 text-green-800 rounded mb-4 text-center">
           {infoMessage}
@@ -273,9 +296,14 @@ export default function CalendarPage() {
                     <div className="font-bold">{event.title}</div>
                   </div>
                 </div>
-                <Button onClick={() => handleEventClick(event)} size="sm">
-                  Anmelden
-                </Button>
+                {/* Button nur anzeigen, wenn das Event nicht in registeredEvents enthalten ist */}
+                {!registeredEvents.has(event.id) ? (
+                  <Button onClick={() => handleEventClick(event)} size="sm">
+                    Anmelden
+                  </Button>
+                ) : (
+                  <span className="text-sm text-green-600">Bereits angemeldet</span>
+                )}
               </div>
               {event.description && (
                 <>

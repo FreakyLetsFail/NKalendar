@@ -55,7 +55,7 @@ async function sendDueNotifications() {
         // 14 Tage vorher: Sende an alle globalen Push-Abonnements
         const payload = {
           title: `Erinnerung: In 14 Tagen ist ${notification.events.title}`,
-          body: "Das Event findet in 14 Tagen statt!"
+          body: "Melde dich an und sei dabei!"
         };
         console.log("Zweig: 14 Tage vorher");
         console.log("Payload:", payload);
