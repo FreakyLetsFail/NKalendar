@@ -28,7 +28,7 @@ export default function CalendarPage() {
   // Datum für den Kalender
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Push-Benachrichtigung
+  // Push-Benachrichtigung / PWA-Status
   const [pushSubscription, setPushSubscription] = useState(null);
   const [pushStatus, setPushStatus] = useState("Push-Registrierung nicht initiiert");
 
@@ -154,7 +154,7 @@ export default function CalendarPage() {
     return eventTime <= fourteenDaysLater;
   });
 
-  // Push-Benachrichtigung initialisieren
+  // Push-Benachrichtigung / PWA initialisieren
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js")
@@ -163,7 +163,7 @@ export default function CalendarPage() {
           const existingSubscription = await registration.pushManager.getSubscription();
           if (existingSubscription) {
             setPushSubscription(existingSubscription);
-            setPushStatus(""); // Kein zusätzlicher Text, wenn aktiv
+            setPushStatus("");
           }
         })
         .catch((err) => {
@@ -217,8 +217,9 @@ export default function CalendarPage() {
     }
   };
 
-  // Öffnet das Modal zur Event-Anmeldung
+  // Öffnet das Modal zur Event-Anmeldung – nur, wenn PWA installiert (also pushSubscription vorhanden) ist
   const handleEventClick = (event) => {
+    if (!pushSubscription) return;
     setSelectedEvent(event);
   };
 
@@ -296,13 +297,17 @@ export default function CalendarPage() {
                     <div className="font-bold">{event.title}</div>
                   </div>
                 </div>
-                {/* Button nur anzeigen, wenn das Event nicht in registeredEvents enthalten ist */}
-                {!registeredEvents.has(event.id) ? (
-                  <Button onClick={() => handleEventClick(event)} size="sm">
-                    Anmelden
-                  </Button>
+                {/* Registrierungsbutton nur anzeigen, wenn PWA installiert und Event noch nicht registriert ist */}
+                {pushSubscription ? (
+                  !registeredEvents.has(event.id) ? (
+                    <Button onClick={() => handleEventClick(event)} size="sm">
+                      Anmelden
+                    </Button>
+                  ) : (
+                    <span className="text-sm text-green-600">Bereits angemeldet</span>
+                  )
                 ) : (
-                  <span className="text-sm text-green-600">Bereits angemeldet</span>
+                  <span className="text-sm text-gray-600">Registrierung deaktiviert</span>
                 )}
               </div>
               {event.description && (
@@ -327,8 +332,16 @@ export default function CalendarPage() {
           {upcomingEvents.map((event) => (
             <li
               key={event.id}
-              className="p-4 border border-black rounded hover:bg-gray-100 transition"
-              onClick={() => handleEventClick(event)}
+              className={`p-4 border border-black rounded ${
+                !registeredEvents.has(event.id) && pushSubscription
+                  ? "hover:bg-gray-100 cursor-pointer"
+                  : "cursor-default"
+              }`}
+              onClick={() => {
+                if (pushSubscription && !registeredEvents.has(event.id)) {
+                  handleEventClick(event);
+                }
+              }}
             >
               <div className="flex items-center">
                 <img src="/Flag_Icon.png" alt="Flagge" className="h-6 w-6 mr-2" />
@@ -359,6 +372,8 @@ export default function CalendarPage() {
         <Calendar
           currentDate={currentDate}
           events={events}
+          registeredEvents={registeredEvents}
+          pushSubscription={pushSubscription}
           onMonthChange={setCurrentDate}
           onEventClick={handleEventClick}
         />
@@ -410,7 +425,7 @@ export default function CalendarPage() {
   );
 }
 
-function Calendar({ currentDate, events, onMonthChange, onEventClick }) {
+function Calendar({ currentDate, events, registeredEvents, pushSubscription, onMonthChange, onEventClick }) {
   const startMonth = startOfMonth(currentDate);
   const startDate = startOfWeek(startMonth, { weekStartsOn: 1 });
   const days = Array.from({ length: 42 }, (_, i) => addDaysFn(startDate, i));
@@ -435,24 +450,29 @@ function Calendar({ currentDate, events, onMonthChange, onEventClick }) {
           </div>
         ))}
         {days.map((day) => {
-          const hasEvent = events.some((event) =>
+          // Sucht ein Event am Tag
+          const eventForDay = events.find((event) =>
             isSameDay(new Date(event.start_time), day)
           );
+          // Registrierungsstatus prüfen
+          const isRegistered = eventForDay && registeredEvents.has(eventForDay.id);
+          // Klickbar nur, wenn ein Event existiert, der Nutzer noch nicht registriert ist und PWA installiert ist
           return (
             <div
               key={day.toString()}
-              className={`p-3 rounded border border-black cursor-pointer flex items-center justify-center ${
+              className={`p-3 rounded border border-black flex items-center justify-center ${
                 isSameMonth(day, currentDate) ? "bg-white" : "bg-gray-100"
-              }`}
+              } ${eventForDay && !isRegistered && pushSubscription ? "cursor-pointer" : "cursor-default"}`}
               onClick={() => {
-                const eventForDay = events.find((event) =>
-                  isSameDay(new Date(event.start_time), day)
-                );
-                if (eventForDay) onEventClick(eventForDay);
+                if (eventForDay && !isRegistered && pushSubscription) {
+                  onEventClick(eventForDay);
+                }
               }}
             >
-              {hasEvent ? (
-                <img src="/Flag_Icon.png" alt="Flagge" className="h-5 w-5" />
+              {eventForDay ? (
+                <>
+                  <img src="/Flag_Icon.png" alt="Flagge" className="h-5 w-5" />
+                </>
               ) : (
                 <span className="text-sm font-medium">
                   {formatInTimeZone(day, timeZone, "d")}

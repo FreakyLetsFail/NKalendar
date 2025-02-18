@@ -97,7 +97,7 @@ export default function HomePage() {
       <div className="max-w-xl w-full bg-white rounded-lg shadow-xl p-6 space-y-6 border border-gray-200">
         <h1 className="text-3xl md:text-4xl font-bold text-center text-gray-800 flex items-center justify-center gap-2">
           <AiOutlineHome className="text-indigo-600 text-4xl" />
-          Semesterprogramm der B! Norddeutsche und Niedersachsen
+          Semesterprogramm der B! Norddeutschen und Niedersachsen
         </h1>
 
         <p className="text-gray-700 text-center leading-relaxed">
